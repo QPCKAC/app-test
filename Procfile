@@ -1,0 +1,1 @@
+web: ./setup.sh && ollama run llama3.1:8b & streamlit run retrival_testing.py
