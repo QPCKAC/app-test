@@ -1,1 +1,1 @@
-web: ./setup.sh && ollama run llama3.1:8b & streamlit run retrival_testing.py
+web: ./setup.sh && ollama pull llama3.1 & streamlit run retrival_testing.py

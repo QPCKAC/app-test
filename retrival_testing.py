@@ -129,4 +129,3 @@ st.sidebar.info("This app retrieves relevant chunks from ACOG guidelines using a
 st.sidebar.title("Debug Info")
 st.sidebar.write(f"Query: {st.session_state.get('last_query', 'No query yet')}")
 st.sidebar.write(f"Number of docs retrieved: {len(st.session_state.docs) if st.session_state.docs else 0}")
-

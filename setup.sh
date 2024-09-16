@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Pull the Llama 3.1 8B model
-ollama pull llama3.1:8b
+ollama pull llama3.1
 
 # Set up Streamlit config
 mkdir -p ~/.streamlit
