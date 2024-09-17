@@ -1,22 +1,29 @@
 import os
 import streamlit as st
-from langchain_chroma import Chroma
+from langchain_pinecone import Pinecone
 from langchain_ollama import OllamaEmbeddings
 import base64
 import fitz  # PyMuPDF
+from pinecone import Pinecone as PineconeClient
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Define directories
 current_dir = os.path.dirname(os.path.abspath(__file__))
-db_dir = os.path.join(current_dir, "db")
-persistent_directory = os.path.join(db_dir, "chroma_acog_docs_with_metadata")
 
 # Initialize Ollama components
 embeddings = OllamaEmbeddings(model="nomic-embed-text")
 
-# Load the existing Chroma database
+# Initialize Pinecone
+pc = PineconeClient(api_key=os.getenv("PINECONE_API_KEY"))
+index_name = os.getenv("PINECONE_INDEX_NAME", "acog-docs")
+
+# Load the existing Pinecone database
 @st.cache_resource
 def load_vectordb():
-    return Chroma(persist_directory=persistent_directory, embedding_function=embeddings)
+    return Pinecone(index_name=index_name, embedding=embeddings)
 
 vectorstore = load_vectordb()
 
