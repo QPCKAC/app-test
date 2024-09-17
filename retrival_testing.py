@@ -1,6 +1,7 @@
 import os
 import streamlit as st
 from langchain_pinecone import Pinecone
+from langchain_openai import OpenAIEmbeddings
 from langchain_ollama import OllamaEmbeddings
 import base64
 import fitz  # PyMuPDF
@@ -13,8 +14,16 @@ load_dotenv()
 # Define directories
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Initialize Ollama components
-embeddings = OllamaEmbeddings(model="nomic-embed-text")
+# Initialize embeddings with fallback
+@st.cache_resource
+def get_embeddings():
+    try:
+        return OllamaEmbeddings(model="nomic-embed-text")
+    except Exception as e:
+        st.warning(f"Failed to initialize Ollama embeddings: {e}. Falling back to OpenAI embeddings.")
+        return OpenAIEmbeddings()
+
+embeddings = get_embeddings()
 
 # Initialize Pinecone
 pc = PineconeClient(api_key=os.getenv("PINECONE_API_KEY"))
@@ -23,7 +32,11 @@ index_name = os.getenv("PINECONE_INDEX_NAME", "acog-docs")
 # Load the existing Pinecone database
 @st.cache_resource
 def load_vectordb():
-    return Pinecone(index_name=index_name, embedding=embeddings)
+    try:
+        return Pinecone(index_name=index_name, embedding=embeddings)
+    except Exception as e:
+        st.error(f"Failed to connect to Pinecone: {e}")
+        return None
 
 vectorstore = load_vectordb()
 
@@ -35,40 +48,43 @@ def generate_pdf_link(metadata):
 
 # Display PDF function
 def display_pdf(pdf_path, page, highlight_text=None):
-    doc = fitz.open(pdf_path)
-    images = []
-    highlight_index = None
-    for i in range(len(doc)):
-        page_obj = doc.load_page(i)
-        if i == page - 1 and highlight_text:
-            text_instances = page_obj.search_for(highlight_text)
-            if text_instances:
-                highlight_index = i
-                for inst in text_instances:
-                    highlight = page_obj.add_highlight_annot(inst)
-        pix = page_obj.get_pixmap()
-        img_bytes = pix.tobytes()
-        img_base64 = base64.b64encode(img_bytes).decode()
-        images.append(f'<img id="page-{i}" src="data:image/png;base64,{img_base64}" style="width:100%; margin-bottom:10px;"/>')
-    
-    scroll_script = ""
-    if highlight_index is not None:
-        scroll_script = f"""
-        <script>
-            document.addEventListener('DOMContentLoaded', (event) => {{
-                document.getElementById('page-{highlight_index}').scrollIntoView({{behavior: 'smooth'}});
-            }});
-        </script>
+    try:
+        doc = fitz.open(pdf_path)
+        images = []
+        highlight_index = None
+        for i in range(len(doc)):
+            page_obj = doc.load_page(i)
+            if i == page - 1 and highlight_text:
+                text_instances = page_obj.search_for(highlight_text)
+                if text_instances:
+                    highlight_index = i
+                    for inst in text_instances:
+                        highlight = page_obj.add_highlight_annot(inst)
+            pix = page_obj.get_pixmap()
+            img_bytes = pix.tobytes()
+            img_base64 = base64.b64encode(img_bytes).decode()
+            images.append(f'<img id="page-{i}" src="data:image/png;base64,{img_base64}" style="width:100%; margin-bottom:10px;"/>')
+        
+        scroll_script = ""
+        if highlight_index is not None:
+            scroll_script = f"""
+            <script>
+                document.addEventListener('DOMContentLoaded', (event) => {{
+                    document.getElementById('page-{highlight_index}').scrollIntoView({{behavior: 'smooth'}});
+                }});
+            </script>
+            """
+        
+        pdf_display = f"""
+        <div id="pdf-viewer" style="height:600px; overflow-y:scroll;">
+            {"".join(images)}
+        </div>
+        {scroll_script}
         """
-    
-    pdf_display = f"""
-    <div id="pdf-viewer" style="height:600px; overflow-y:scroll;">
-        {"".join(images)}
-    </div>
-    {scroll_script}
-    """
-    st.components.v1.html(pdf_display, height=620, scrolling=True)
-    doc.close()
+        st.components.v1.html(pdf_display, height=620, scrolling=True)
+        doc.close()
+    except Exception as e:
+        st.error(f"Error displaying PDF: {e}")
 
 # Show PDF function
 def show_pdf(pdf_path, page, highlight_text=None):
@@ -79,15 +95,21 @@ def show_pdf(pdf_path, page, highlight_text=None):
     }
 
 # Create a retriever
-retriever = vectorstore.as_retriever(
-    search_type="mmr",
-    search_kwargs={
-        "k": 4,
-        "fetch_k": 10,
-        "lambda_mult": 0.5,
-        "score_threshold": 0.6
-    }
-)
+@st.cache_resource
+def get_retriever():
+    if vectorstore:
+        return vectorstore.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": 4,
+                "fetch_k": 10,
+                "lambda_mult": 0.5,
+                "score_threshold": 0.6
+            }
+        )
+    return None
+
+retriever = get_retriever()
 
 # Streamlit UI
 st.title("ACOG Document Retrieval System")
@@ -103,8 +125,13 @@ query = st.text_input("Enter your question about ACOG guidelines:")
 
 if query and (query != st.session_state.get('last_query', '')):
     st.session_state.last_query = query
-    # Use invoke instead of get_relevant_documents
-    st.session_state.docs = retriever.invoke(query)
+    if retriever:
+        try:
+            st.session_state.docs = retriever.invoke(query)
+        except Exception as e:
+            st.error(f"Error retrieving documents: {e}")
+    else:
+        st.error("Retriever is not initialized. Please check your Pinecone connection.")
 
 if st.session_state.docs:
     # Display retrieved chunks
@@ -130,19 +157,11 @@ if st.session_state.docs:
 
 # Add a sidebar with some information
 st.sidebar.title("About")
-st.sidebar.info("This app retrieves relevant chunks from ACOG guidelines using a local Chroma database.")
+st.sidebar.info("This app retrieves relevant chunks from ACOG guidelines using a Pinecone database.")
 
 # Debug information
 st.sidebar.title("Debug Info")
 st.sidebar.write(f"Query: {st.session_state.get('last_query', 'No query yet')}")
 st.sidebar.write(f"Number of docs retrieved: {len(st.session_state.docs) if st.session_state.docs else 0}")
-
-
-# if __name__ == "__main__":
-#     port = int(os.environ.get("PORT", 8501))
-#     import streamlit.web.bootstrap as bootstrap
-#     bootstrap.run(
-#         __file__,
-#         f"--server.port={port}",
-#         "--server.address=0.0.0.0"
-#     )
+st.sidebar.write(f"Embedding model: {type(embeddings).__name__}")
+st.sidebar.write(f"Pinecone index: {index_name}")
