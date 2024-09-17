@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 from langchain_pinecone import Pinecone
-from langchain_ollama import OllamaEmbeddings
+from langchain_openai import OpenAIEmbeddings
 import base64
 import fitz  # PyMuPDF
 from pinecone import Pinecone as PineconeClient
@@ -18,7 +18,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 @st.cache_resource
 def get_embeddings():
     try:
-        embeddings = OllamaEmbeddings(model="nomic-embed-text")
+        embeddings = OpenAIEmbeddings()
         # Test the embeddings
         test_embedding = embeddings.embed_query("Test sentence")
         st.sidebar.success(f"Ollama embeddings initialized successfully. Dimension: {len(test_embedding)}")

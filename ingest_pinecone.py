@@ -2,7 +2,7 @@ import os
 import sys
 from typing import List, Dict
 import fitz  # PyMuPDF
-from langchain_ollama import OllamaEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from pinecone import Pinecone, PodSpec
 from dotenv import load_dotenv
 
@@ -25,10 +25,14 @@ print(f"ACOG directory: {acog_dir}")
 
 # Initialize Pinecone
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-index_name = os.getenv("PINECONE_INDEX_NAME", "acog-docs")
+index_name = os.getenv("PINECONE_INDEX_NAME", "risk")
+
+# Connect to the existing index
+index = pc.Index(index_name)
+print(f"Connected to Pinecone index: {index_name}")
 
 # Initialize Nomic embeddings
-embeddings = OllamaEmbeddings(model="nomic-embed-text")
+embeddings = OpenAIEmbeddings()
 
 # Check embedding dimension
 test_embedding = embeddings.embed_query("Test sentence")
