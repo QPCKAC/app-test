@@ -6,7 +6,6 @@ import base64
 import fitz  # PyMuPDF
 from pinecone import Pinecone as PineconeClient
 from dotenv import load_dotenv
-import requests
 
 # Load environment variables
 load_dotenv()
@@ -14,17 +13,17 @@ load_dotenv()
 # Define directories
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Initialize Ollama embeddings
+# Initialize OpenAI embeddings
 @st.cache_resource
 def get_embeddings():
     try:
         embeddings = OpenAIEmbeddings()
         # Test the embeddings
         test_embedding = embeddings.embed_query("Test sentence")
-        st.sidebar.success(f"Ollama embeddings initialized successfully. Dimension: {len(test_embedding)}")
+        st.sidebar.success(f"OpenAI embeddings initialized successfully. Dimension: {len(test_embedding)}")
         return embeddings
     except Exception as e:
-        st.sidebar.error(f"Failed to initialize Ollama embeddings: {e}")
+        st.sidebar.error(f"Failed to initialize OpenAI embeddings: {e}")
         return None
 
 embeddings = get_embeddings()
@@ -34,7 +33,7 @@ embeddings = get_embeddings()
 def init_pinecone():
     try:
         pc = PineconeClient(api_key=os.getenv("PINECONE_API_KEY"))
-        index_name = os.getenv("PINECONE_INDEX_NAME", "acog-docs")
+        index_name = os.getenv("PINECONE_INDEX_NAME", "risk")
         st.sidebar.success(f"Connected to Pinecone. Index: {index_name}")
         return pc, index_name
     except Exception as e:
@@ -149,12 +148,6 @@ if query and (query != st.session_state.get('last_query', '')):
             st.session_state.docs = retriever.invoke(query)
         except Exception as e:
             st.error(f"Error retrieving documents: {e}")
-            # Attempt to diagnose the issue
-            try:
-                response = requests.get("http://localhost:11434")
-                st.sidebar.info(f"Ollama server status: {response.status_code}")
-            except requests.exceptions.ConnectionError:
-                st.sidebar.error("Cannot connect to Ollama server. Is it running?")
     else:
         st.error("Retriever is not initialized. Please check the sidebar for initialization errors.")
 
@@ -189,11 +182,3 @@ st.sidebar.title("Debug Info")
 st.sidebar.write(f"Query: {st.session_state.get('last_query', 'No query yet')}")
 st.sidebar.write(f"Number of docs retrieved: {len(st.session_state.docs) if st.session_state.docs else 0}")
 st.sidebar.write(f"Pinecone index: {index_name}")
-
-# Ollama server status check
-if st.sidebar.button("Check Ollama Server"):
-    try:
-        response = requests.get("http://localhost:11434")
-        st.sidebar.success(f"Ollama server is running. Status: {response.status_code}")
-    except requests.exceptions.ConnectionError:
-        st.sidebar.error("Cannot connect to Ollama server. Is it running?")
