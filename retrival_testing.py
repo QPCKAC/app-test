@@ -6,6 +6,7 @@ import base64
 import fitz  # PyMuPDF
 from pinecone import Pinecone as PineconeClient
 from dotenv import load_dotenv
+import requests
 
 # Load environment variables
 load_dotenv()
@@ -13,25 +14,48 @@ load_dotenv()
 # Define directories
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Initialize embeddings with fallback
+# Initialize Ollama embeddings
 @st.cache_resource
-def get_embeddings():    
-    return OllamaEmbeddings(model="nomic-embed-text")
-   
+def get_embeddings():
+    try:
+        embeddings = OllamaEmbeddings(model="nomic-embed-text")
+        # Test the embeddings
+        test_embedding = embeddings.embed_query("Test sentence")
+        st.sidebar.success(f"Ollama embeddings initialized successfully. Dimension: {len(test_embedding)}")
+        return embeddings
+    except Exception as e:
+        st.sidebar.error(f"Failed to initialize Ollama embeddings: {e}")
+        return None
+
 embeddings = get_embeddings()
 
 # Initialize Pinecone
-pc = PineconeClient(api_key=os.getenv("PINECONE_API_KEY"))
-index_name = os.getenv("PINECONE_INDEX_NAME", "acog-docs")
+@st.cache_resource
+def init_pinecone():
+    try:
+        pc = PineconeClient(api_key=os.getenv("PINECONE_API_KEY"))
+        index_name = os.getenv("PINECONE_INDEX_NAME", "acog-docs")
+        st.sidebar.success(f"Connected to Pinecone. Index: {index_name}")
+        return pc, index_name
+    except Exception as e:
+        st.sidebar.error(f"Failed to connect to Pinecone: {e}")
+        return None, None
+
+pc, index_name = init_pinecone()
 
 # Load the existing Pinecone database
 @st.cache_resource
 def load_vectordb():
-    try:
-        return Pinecone(index_name=index_name, embedding=embeddings)
-    except Exception as e:
-        st.error(f"Failed to connect to Pinecone: {e}")
-        return None
+    if embeddings and pc and index_name:
+        try:
+            vectorstore = Pinecone(index_name=index_name, embedding=embeddings)
+            st.sidebar.success("Vectorstore loaded successfully")
+            return vectorstore
+        except Exception as e:
+            st.sidebar.error(f"Failed to load vectorstore: {e}")
+    else:
+        st.sidebar.error("Cannot load vectorstore: Embeddings or Pinecone not initialized")
+    return None
 
 vectorstore = load_vectordb()
 
@@ -125,8 +149,14 @@ if query and (query != st.session_state.get('last_query', '')):
             st.session_state.docs = retriever.invoke(query)
         except Exception as e:
             st.error(f"Error retrieving documents: {e}")
+            # Attempt to diagnose the issue
+            try:
+                response = requests.get("http://localhost:11434")
+                st.sidebar.info(f"Ollama server status: {response.status_code}")
+            except requests.exceptions.ConnectionError:
+                st.sidebar.error("Cannot connect to Ollama server. Is it running?")
     else:
-        st.error("Retriever is not initialized. Please check your Pinecone connection.")
+        st.error("Retriever is not initialized. Please check the sidebar for initialization errors.")
 
 if st.session_state.docs:
     # Display retrieved chunks
@@ -158,5 +188,12 @@ st.sidebar.info("This app retrieves relevant chunks from ACOG guidelines using a
 st.sidebar.title("Debug Info")
 st.sidebar.write(f"Query: {st.session_state.get('last_query', 'No query yet')}")
 st.sidebar.write(f"Number of docs retrieved: {len(st.session_state.docs) if st.session_state.docs else 0}")
-st.sidebar.write(f"Embedding model: {type(embeddings).__name__}")
 st.sidebar.write(f"Pinecone index: {index_name}")
+
+# Ollama server status check
+if st.sidebar.button("Check Ollama Server"):
+    try:
+        response = requests.get("http://localhost:11434")
+        st.sidebar.success(f"Ollama server is running. Status: {response.status_code}")
+    except requests.exceptions.ConnectionError:
+        st.sidebar.error("Cannot connect to Ollama server. Is it running?")
