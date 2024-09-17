@@ -20,10 +20,10 @@ def get_embeddings():
         embeddings = OpenAIEmbeddings()
         # Test the embeddings
         test_embedding = embeddings.embed_query("Test sentence")
-        st.sidebar.success(f"OpenAI embeddings initialized successfully. Dimension: {len(test_embedding)}")
+        #st.sidebar.success(f"OpenAI embeddings initialized successfully. Dimension: {len(test_embedding)}")
         return embeddings
     except Exception as e:
-        st.sidebar.error(f"Failed to initialize OpenAI embeddings: {e}")
+        #st.sidebar.error(f"Failed to initialize OpenAI embeddings: {e}")
         return None
 
 embeddings = get_embeddings()
