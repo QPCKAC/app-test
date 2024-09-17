@@ -1,7 +1,6 @@
 import os
 import streamlit as st
 from langchain_pinecone import Pinecone
-from langchain_openai import OpenAIEmbeddings
 from langchain_ollama import OllamaEmbeddings
 import base64
 import fitz  # PyMuPDF
@@ -16,13 +15,9 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Initialize embeddings with fallback
 @st.cache_resource
-def get_embeddings():
-    try:
-        return OllamaEmbeddings(model="nomic-embed-text")
-    except Exception as e:
-        st.warning(f"Failed to initialize Ollama embeddings: {e}. Falling back to OpenAI embeddings.")
-        return OpenAIEmbeddings()
-
+def get_embeddings():    
+    return OllamaEmbeddings(model="nomic-embed-text")
+   
 embeddings = get_embeddings()
 
 # Initialize Pinecone
