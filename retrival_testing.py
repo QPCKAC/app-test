@@ -151,13 +151,12 @@ if query and (query != st.session_state.get('last_query', '')):
 if st.session_state.docs:
     # Display retrieved chunks
     st.markdown("### Retrieved Chunks:")
-    for i, (doc, score) in enumerate(st.session_state.docs):
+    for i, doc in enumerate(st.session_state.docs):
         with st.expander(f"Chunk {i+1}: {doc.metadata.get('source', 'Unknown')}"):
             st.write("Content:")
             st.write(doc.page_content)
             st.write(f"Source: {doc.metadata.get('source', 'Unknown')}")
             st.write(f"Page: {doc.metadata.get('page', 'Unknown')}")
-            st.write(f"Similarity Score: {score:.4f}")
             pdf_path, page = generate_pdf_link(doc.metadata)
             if st.button(f"View PDF (Page {page})", key=f"pdf_button_{i}"):
                 show_pdf(pdf_path, page, doc.page_content[:])  # Use the first 50 characters as highlight text
