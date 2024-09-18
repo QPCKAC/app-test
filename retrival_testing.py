@@ -156,10 +156,11 @@ if st.session_state.docs:
             st.write("Content:")
             st.write(doc.page_content)
             st.write(f"Source: {doc.metadata.get('source', 'Unknown')}")
-            st.write(f"Page: {doc.metadata.get('page', 'Unknown')}")
+            st.write(f"Page: {doc.metadata.get('page', 'Unknown')}")   
+            st.write(f"Relevance Score: {doc.metadata.get('score', 'N/A')}")  # Display relevance score
             pdf_path, page = generate_pdf_link(doc.metadata)
             if st.button(f"View PDF (Page {page})", key=f"pdf_button_{i}"):
-                show_pdf(pdf_path, page, doc.page_content[:50])  # Use the first 50 characters as highlight text
+                show_pdf(pdf_path, page, doc.page_content) # Use the first 50 characters as highlight text
     
     # Display PDF if requested
     if st.session_state.pdf_viewer:
