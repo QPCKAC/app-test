@@ -119,10 +119,10 @@ def get_retriever():
         return vectorstore.as_retriever(
             search_type="mmr",
             search_kwargs={
-                "k": 4,
-                "fetch_k": 10,
-                "lambda_mult": 0.5,
-                "score_threshold": 0.6
+                "k": 3,
+                "fetch_k": 8,
+                "lambda_mult": 0.3,
+                "score_threshold": 0.8
             }
         )
     return None
