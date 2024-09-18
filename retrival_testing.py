@@ -159,7 +159,7 @@ if st.session_state.docs:
             st.write(f"Page: {doc.metadata.get('page', 'Unknown')}")
             pdf_path, page = generate_pdf_link(doc.metadata)
             if st.button(f"View PDF (Page {page})", key=f"pdf_button_{i}"):
-                show_pdf(pdf_path, page, doc.page_content[:300])  # Use the first 50 characters as highlight text
+                show_pdf(pdf_path, page, doc.page_content[:200])  # Use the first 50 characters as highlight text
     
     # Display PDF if requested
     if st.session_state.pdf_viewer:
