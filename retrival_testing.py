@@ -117,11 +117,9 @@ def show_pdf(pdf_path, page, highlight_text=None):
 def get_retriever():
     if vectorstore:
         return vectorstore.as_retriever(
-            search_type="mmr",
+            search_type="cosine",
             search_kwargs={
                 "k": 3,
-                "fetch_k": 8,
-                "lambda_mult": 0.3,
                 "score_threshold": 0.8
             }
         )
