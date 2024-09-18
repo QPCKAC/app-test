@@ -58,6 +58,20 @@ def load_vectordb():
 
 vectorstore = load_vectordb()
 
+def split_text(text, max_length=100):
+    words = text.split()
+    chunks = []
+    current_chunk = ''
+    for word in words:
+        if len(current_chunk) + len(word) + 1 <= max_length:
+            current_chunk += ' ' + word if current_chunk else word
+        else:
+            chunks.append(current_chunk)
+            current_chunk = word
+    if current_chunk:
+        chunks.append(current_chunk)
+    return chunks
+
 # Generate PDF link function
 def generate_pdf_link(metadata):
     pdf_dir = os.path.join(current_dir, "data")
@@ -73,11 +87,13 @@ def display_pdf(pdf_path, page, highlight_text=None):
         for i in range(len(doc)):
             page_obj = doc.load_page(i)
             if i == page - 1 and highlight_text:
-                text_instances = page_obj.search_for(highlight_text)
-                if text_instances:
-                    highlight_index = i
-                    for inst in text_instances:
-                        highlight = page_obj.add_highlight_annot(inst)
+                chunks = split_text(highlight_text, max_length=100)
+                for chunk in chunks:
+                    text_instances = page_obj.search_for(chunk)
+                    if text_instances:
+                        highlight_index = i
+                        for inst in text_instances:
+                            highlight = page_obj.add_highlight_annot(inst)
             pix = page_obj.get_pixmap()
             img_bytes = pix.tobytes()
             img_base64 = base64.b64encode(img_bytes).decode()
@@ -134,33 +150,34 @@ if 'pdf_viewer' not in st.session_state:
     st.session_state.pdf_viewer = None
 if 'docs' not in st.session_state:
     st.session_state.docs = None
+if 'docs_and_scores' not in st.session_state:
+    st.session_state.docs_and_scores = None
 
 # User input
 query = st.text_input("Enter your question about ACOG guidelines:")
 
 if query and (query != st.session_state.get('last_query', '')):
     st.session_state.last_query = query
-    if retriever:
+    if vectorstore:
         try:
-            st.session_state.docs = retriever.invoke(query)
+            st.session_state.docs_and_scores = vectorstore.similarity_search_with_score(query, k=3)
         except Exception as e:
             st.error(f"Error retrieving documents: {e}")
     else:
-        st.error("Retriever is not initialized. Please check the sidebar for initialization errors.")
+        st.error("Vectorstore is not initialized. Please check the sidebar for initialization errors.")
 
-if st.session_state.docs:
-    # Display retrieved chunks
+if st.session_state.docs_and_scores:
     st.markdown("### Retrieved Chunks:")
-    for i, doc in enumerate(st.session_state.docs):
-        with st.expander(f"Chunk {i+1}: {doc.metadata.get('source', 'Unknown')}"):
+    for i, (doc, score) in enumerate(st.session_state.docs_and_scores):
+        with st.expander(f"Chunk {i+1}: {doc.metadata.get('source', 'Unknown')} (Score: {score:.4f})"):
             st.write("Content:")
             st.write(doc.page_content)
+            st.write(f"Similarity Score: {score:.4f}")
             st.write(f"Source: {doc.metadata.get('source', 'Unknown')}")
             st.write(f"Page: {doc.metadata.get('page', 'Unknown')}")
             pdf_path, page = generate_pdf_link(doc.metadata)
             if st.button(f"View PDF (Page {page})", key=f"pdf_button_{i}"):
-                show_pdf(pdf_path, page, doc.page_content[:100])  # Use the first 50 characters as highlight text
-    
+                show_pdf(pdf_path, page, doc.page_content)
     # Display PDF if requested
     if st.session_state.pdf_viewer:
         st.markdown("### PDF Viewer")
