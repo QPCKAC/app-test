@@ -117,7 +117,7 @@ def show_pdf(pdf_path, page, highlight_text=None):
 def get_retriever():
     if vectorstore:
         return vectorstore.as_retriever(
-            search_type="cosine",
+            search_type="similarity",
             search_kwargs={
                 "k": 3,
                 "score_threshold": 0.8
