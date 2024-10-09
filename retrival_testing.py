@@ -78,22 +78,51 @@ def generate_pdf_link(metadata):
     pdf_path = os.path.join(pdf_dir, metadata['source'])
     return pdf_path, metadata['page']
 
-# Display PDF function
-def display_pdf(pdf_path):
+# Display PDF function with highlighting
+def display_pdf(pdf_path, page=None, highlight_text=None):
     try:
         doc = fitz.open(pdf_path)
         images = []
+        highlight_index = None
+        
         for i in range(len(doc)):
             page_obj = doc.load_page(i)
+            
+            if i == page - 1 and highlight_text:
+                words = highlight_text.split()
+                if len(words) >= 2:
+                    start_text = words[0]
+                    end_text = words[-1]
+                    
+                    start_areas = page_obj.search_for(start_text)
+                    end_areas = page_obj.search_for(end_text)
+                    
+                    if start_areas and end_areas:
+                        p1 = start_areas[0].tl  # top-left point of first rectangle
+                        p2 = end_areas[-1].br  # bottom-right point of last rectangle
+                        highlight = page_obj.add_highlight_annot(start=p1, stop=p2)
+                        highlight_index = i
+
             pix = page_obj.get_pixmap()
             img_bytes = pix.tobytes()
             img_base64 = base64.b64encode(img_bytes).decode()
             images.append(f'<img id="page-{i}" src="data:image/png;base64,{img_base64}" style="width:100%; margin-bottom:10px;"/>')
         
+        scroll_script = ""
+        if highlight_index is not None:
+            scroll_script = f"""
+            <script>
+                document.addEventListener('DOMContentLoaded', (event) => {{
+                    document.getElementById('page-{highlight_index}').scrollIntoView({{behavior: 'smooth'}});
+                }});
+            </script>
+            """
+        
         pdf_display = f"""
         <div id="pdf-viewer" style="height:600px; overflow-y:scroll;">
             {"".join(images)}
         </div>
+        {scroll_script}
         """
         st.components.v1.html(pdf_display, height=620, scrolling=True)
         doc.close()
@@ -186,15 +215,11 @@ if st.session_state.docs_and_scores:
     # Display PDF if requested
     if st.session_state.pdf_viewer:
         st.markdown("### PDF Viewer")
-        display_pdf(st.session_state.pdf_viewer["pdf_path"])
-        
-        if st.session_state.pdf_viewer["highlight_text"]:
-            st.markdown("### Highlighted Page")
-            highlight_pdf(
-                st.session_state.pdf_viewer["pdf_path"],
-                st.session_state.pdf_viewer["page"],
-                st.session_state.pdf_viewer["highlight_text"]
-            )
+        display_pdf(
+            st.session_state.pdf_viewer["pdf_path"],
+            st.session_state.pdf_viewer["page"],
+            st.session_state.pdf_viewer["highlight_text"]
+        )
 
 # Add a sidebar with some information
 st.sidebar.title("About")
