@@ -82,8 +82,12 @@ def generate_pdf_link(metadata):
 def display_pdf(pdf_path, page=None, highlight_text=None):
     try:
         with fitz.open(pdf_path) as doc:
-            if page is None:
+            if page is None or page < 1:
                 page = 1
+            if page > doc.page_count:
+                st.warning(f"Requested page {page} is out of range. Displaying the last page instead.")
+                page = doc.page_count
+            
             page_obj = doc.load_page(page - 1)
 
             if highlight_text:
@@ -95,10 +99,12 @@ def display_pdf(pdf_path, page=None, highlight_text=None):
 
             pix = page_obj.get_pixmap(dpi=120)
             img_bytes = pix.tobytes()
-            st.image(img_bytes, caption=f"Page {page}", use_column_width=True)
+            st.image(img_bytes, caption=f"Page {page} of {doc.page_count}", use_column_width=True)
 
+    except fitz.FileDataError:
+        st.error(f"Error: Unable to open the PDF file at {pdf_path}. Please check if the file exists and is accessible.")
     except Exception as e:
-        st.error(f"Error displaying PDF: {e}")
+        st.error(f"Error displaying PDF: {str(e)}")
 
 # # Highlight PDF function
 # def highlight_pdf(pdf_path, page, highlight_text):
