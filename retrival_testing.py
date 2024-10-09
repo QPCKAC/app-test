@@ -81,52 +81,22 @@ def generate_pdf_link(metadata):
 # Display PDF function with highlighting
 def display_pdf(pdf_path, page=None, highlight_text=None):
     try:
-        doc = fitz.open(pdf_path)
-        images = []
-        highlight_index = None
-        
-        for i in range(len(doc)):
-            page_obj = doc.load_page(i)
-            
-            if i == page - 1 and highlight_text:
-                words = highlight_text.split()
-                if len(words) >= 2:
-                    start_text = words[0]
-                    end_text = words[-1]
-                    
-                    start_areas = page_obj.search_for(start_text)
-                    end_areas = page_obj.search_for(end_text)
-                    
-                    if start_areas and end_areas:
-                        p1 = start_areas[0].tl  # top-left point of first rectangle
-                        p2 = end_areas[-1].br  # bottom-right point of last rectangle
-                        page_obj.add_highlight_annot(start=p1, stop=p2)
-                        # Remove the following line if highlight_index is not used elsewhere
-                        # highlight_index = i
+        with fitz.open(pdf_path) as doc:
+            if page is None:
+                page = 1
+            page_obj = doc.load_page(page - 1)
 
-            pix = page_obj.get_pixmap()
+            if highlight_text:
+                chunks = split_text(highlight_text, max_length=1000)
+                for chunk in chunks:
+                    areas = page_obj.search_for(chunk)
+                    for area in areas:
+                        page_obj.add_highlight_annot(area)
+
+            pix = page_obj.get_pixmap(dpi=120)
             img_bytes = pix.tobytes()
-            img_base64 = base64.b64encode(img_bytes).decode()
-            images.append(f'<img id="page-{i}" src="data:image/png;base64,{img_base64}" style="width:100%; margin-bottom:10px;"/>')
-        
-        scroll_script = ""
-        if highlight_index is not None:
-            scroll_script = f"""
-            <script>
-                document.addEventListener('DOMContentLoaded', (event) => {{
-                    document.getElementById('page-{highlight_index}').scrollIntoView({{behavior: 'smooth'}});
-                }});
-            </script>
-            """
-        
-        pdf_display = f"""
-        <div id="pdf-viewer" style="height:600px; overflow-y:scroll;">
-            {"".join(images)}
-        </div>
-        {scroll_script}
-        """
-        st.components.v1.html(pdf_display, height=620, scrolling=True)
-        doc.close()
+            st.image(img_bytes, caption=f"Page {page}", use_column_width=True)
+
     except Exception as e:
         st.error(f"Error displaying PDF: {e}")
 
