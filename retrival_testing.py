@@ -186,11 +186,15 @@ if st.session_state.docs_and_scores:
     # Display PDF if requested
     if st.session_state.pdf_viewer:
         st.markdown("### PDF Viewer")
-        display_pdf(
-            st.session_state.pdf_viewer["pdf_path"],
-            st.session_state.pdf_viewer["page"],
-            st.session_state.pdf_viewer["highlight_text"]
-        )
+        display_pdf(st.session_state.pdf_viewer["pdf_path"])
+        
+        if st.session_state.pdf_viewer["highlight_text"]:
+            st.markdown("### Highlighted Page")
+            highlight_pdf(
+                st.session_state.pdf_viewer["pdf_path"],
+                st.session_state.pdf_viewer["page"],
+                st.session_state.pdf_viewer["highlight_text"]
+            )
 
 # Add a sidebar with some information
 st.sidebar.title("About")
