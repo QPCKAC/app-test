@@ -78,60 +78,49 @@ def generate_pdf_link(metadata):
     pdf_path = os.path.join(pdf_dir, metadata['source'])
     return pdf_path, metadata['page']
 
-# Display PDF function with highlighting
-def display_pdf(pdf_path, page=None, highlight_text=None):
+# Display PDF function
+def display_pdf(pdf_path, page, highlight_text=None):
     try:
-        with fitz.open(pdf_path) as doc:
-            if page is None or page < 1:
-                page = 1
-            if page > doc.page_count:
-                st.warning(f"Requested page {page} is out of range. Displaying the last page instead.")
-                page = doc.page_count
-            
-            page_obj = doc.load_page(page - 1)
-
-            if highlight_text:
-                chunks = split_text(highlight_text, max_length=1000)
+        doc = fitz.open(pdf_path)
+        images = []
+        highlight_index = None
+        for i in range(len(doc)):
+            page_obj = doc.load_page(i)
+            if i == page - 1 and highlight_text:
+                chunks = highlight_text
                 for chunk in chunks:
-                    areas = page_obj.search_for(chunk)
-                    for area in areas:
-                        page_obj.add_highlight_annot(area)
-
-            pix = page_obj.get_pixmap(dpi=120)
+                    text_instances = page_obj.search_for(chunk)
+                    if text_instances:
+                        highlight_index = i
+                        for inst in text_instances:
+                            highlight = page_obj.add_highlight_annot(inst)
+            pix = page_obj.get_pixmap()
             img_bytes = pix.tobytes()
-            st.image(img_bytes, caption=f"Page {page} of {doc.page_count}", use_column_width=True)
-
-    except fitz.FileDataError:
-        st.error(f"Error: Unable to open the PDF file at {pdf_path}. Please check if the file exists and is accessible.")
+            img_base64 = base64.b64encode(img_bytes).decode()
+            images.append(f'<img id="page-{i}" src="data:image/png;base64,{img_base64}" style="width:100%; margin-bottom:10px;"/>')
+        
+        scroll_script = ""
+        if highlight_index is not None:
+            scroll_script = f"""
+            <script>
+                document.addEventListener('DOMContentLoaded', (event) => {{
+                    document.getElementById('page-{highlight_index}').scrollIntoView({{behavior: 'smooth'}});
+                }});
+            </script>
+            """
+        
+        pdf_display = f"""
+        <div id="pdf-viewer" style="height:600px; overflow-y:scroll;">
+            {"".join(images)}
+        </div>
+        {scroll_script}
+        """
+        st.components.v1.html(pdf_display, height=620, scrolling=True)
+        doc.close()
     except Exception as e:
-        st.error(f"Error displaying PDF: {str(e)}")
+        st.error(f"Error displaying PDF: {e}")
 
-# # Highlight PDF function
-# def highlight_pdf(pdf_path, page, highlight_text):
-#     try:
-#         doc = fitz.open(pdf_path)
-#         page_obj = doc.load_page(page - 1)
-#         chunks = split_text(highlight_text, max_length=100)
-#         for chunk in chunks:
-#             text_instances = page_obj.search_for(chunk)
-#             for inst in text_instances:
-#                 highlight = page_obj.add_highlight_annot(inst)
-        
-#         pix = page_obj.get_pixmap()
-#         img_bytes = pix.tobytes()
-#         img_base64 = base64.b64encode(img_bytes).decode()
-        
-#         highlighted_page = f"""
-#         <div id="highlighted-page" style="height:600px; overflow-y:scroll;">
-#             <img src="data:image/png;base64,{img_base64}" style="width:100%;"/>
-#         </div>
-#         """
-#         st.components.v1.html(highlighted_page, height=620, scrolling=True)
-#         doc.close()
-#     except Exception as e:
-#         st.error(f"Error highlighting PDF: {e}")
-
-# Show PDF function (updated)
+# Show PDF function
 def show_pdf(pdf_path, page, highlight_text=None):
     st.session_state.pdf_viewer = {
         "pdf_path": pdf_path,
