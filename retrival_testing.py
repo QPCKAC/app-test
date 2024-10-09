@@ -70,6 +70,7 @@ def split_text(text, max_length=100):
             current_chunk = word
     if current_chunk:
         chunks.append(current_chunk)
+    print(chunks)
     return chunks
 
 # Generate PDF link function
@@ -87,7 +88,7 @@ def display_pdf(pdf_path, page, highlight_text=None):
         for i in range(len(doc)):
             page_obj = doc.load_page(i)
             if i == page - 1 and highlight_text:
-                chunks = split_text(highlight_text, max_length=100)
+                chunks = split_text(highlight_text, max_length=50)
                 for chunk in chunks:
                     text_instances = page_obj.search_for(chunk)
                     if text_instances:
