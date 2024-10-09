@@ -79,48 +79,53 @@ def generate_pdf_link(metadata):
     return pdf_path, metadata['page']
 
 # Display PDF function
-def display_pdf(pdf_path, page, highlight_text=None):
+def display_pdf(pdf_path):
     try:
         doc = fitz.open(pdf_path)
         images = []
-        highlight_index = None
         for i in range(len(doc)):
             page_obj = doc.load_page(i)
-            if i == page - 1 and highlight_text:
-                chunks = split_text(highlight_text, max_length=100)
-                for chunk in chunks:
-                    text_instances = page_obj.search_for(chunk)
-                    if text_instances:
-                        highlight_index = i
-                        for inst in text_instances:
-                            highlight = page_obj.add_highlight_annot(inst)
             pix = page_obj.get_pixmap()
             img_bytes = pix.tobytes()
             img_base64 = base64.b64encode(img_bytes).decode()
             images.append(f'<img id="page-{i}" src="data:image/png;base64,{img_base64}" style="width:100%; margin-bottom:10px;"/>')
         
-        scroll_script = ""
-        if highlight_index is not None:
-            scroll_script = f"""
-            <script>
-                document.addEventListener('DOMContentLoaded', (event) => {{
-                    document.getElementById('page-{highlight_index}').scrollIntoView({{behavior: 'smooth'}});
-                }});
-            </script>
-            """
-        
         pdf_display = f"""
         <div id="pdf-viewer" style="height:600px; overflow-y:scroll;">
             {"".join(images)}
         </div>
-        {scroll_script}
         """
         st.components.v1.html(pdf_display, height=620, scrolling=True)
         doc.close()
     except Exception as e:
         st.error(f"Error displaying PDF: {e}")
 
-# Show PDF function
+# Highlight PDF function
+def highlight_pdf(pdf_path, page, highlight_text):
+    try:
+        doc = fitz.open(pdf_path)
+        page_obj = doc.load_page(page - 1)
+        chunks = split_text(highlight_text, max_length=100)
+        for chunk in chunks:
+            text_instances = page_obj.search_for(chunk)
+            for inst in text_instances:
+                highlight = page_obj.add_highlight_annot(inst)
+        
+        pix = page_obj.get_pixmap()
+        img_bytes = pix.tobytes()
+        img_base64 = base64.b64encode(img_bytes).decode()
+        
+        highlighted_page = f"""
+        <div id="highlighted-page" style="height:600px; overflow-y:scroll;">
+            <img src="data:image/png;base64,{img_base64}" style="width:100%;"/>
+        </div>
+        """
+        st.components.v1.html(highlighted_page, height=620, scrolling=True)
+        doc.close()
+    except Exception as e:
+        st.error(f"Error highlighting PDF: {e}")
+
+# Show PDF function (updated)
 def show_pdf(pdf_path, page, highlight_text=None):
     st.session_state.pdf_viewer = {
         "pdf_path": pdf_path,
