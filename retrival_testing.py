@@ -100,8 +100,9 @@ def display_pdf(pdf_path, page=None, highlight_text=None):
                     if start_areas and end_areas:
                         p1 = start_areas[0].tl  # top-left point of first rectangle
                         p2 = end_areas[-1].br  # bottom-right point of last rectangle
-                        highlight = page_obj.add_highlight_annot(start=p1, stop=p2)
-                        highlight_index = i
+                        page_obj.add_highlight_annot(start=p1, stop=p2)
+                        # Remove the following line if highlight_index is not used elsewhere
+                        # highlight_index = i
 
             pix = page_obj.get_pixmap()
             img_bytes = pix.tobytes()
