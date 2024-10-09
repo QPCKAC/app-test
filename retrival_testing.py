@@ -87,7 +87,7 @@ def display_pdf(pdf_path, page, highlight_text=None):
         for i in range(len(doc)):
             page_obj = doc.load_page(i)
             if i == page - 1 and highlight_text:
-                chunks = split_text(highlight_text)
+                chunks = split_text(highlight_text, max_length=100)
                 for chunk in chunks:
                     text_instances = page_obj.search_for(chunk)
                     if text_instances:
