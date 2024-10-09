@@ -155,13 +155,13 @@ def display_pdf(pdf_path, page=None, highlight_text=None):
 #     except Exception as e:
 #         st.error(f"Error highlighting PDF: {e}")
 
-# # Show PDF function (updated)
-# def show_pdf(pdf_path, page, highlight_text=None):
-#     st.session_state.pdf_viewer = {
-#         "pdf_path": pdf_path,
-#         "page": page,
-#         "highlight_text": highlight_text
-#     }
+# Show PDF function (updated)
+def show_pdf(pdf_path, page, highlight_text=None):
+    st.session_state.pdf_viewer = {
+        "pdf_path": pdf_path,
+        "page": page,
+        "highlight_text": highlight_text
+    }
 
 # Create a retriever
 @st.cache_resource
@@ -212,7 +212,7 @@ if st.session_state.docs_and_scores:
             st.write(f"Page: {doc.metadata.get('page', 'Unknown')}")
             pdf_path, page = generate_pdf_link(doc.metadata)
             if st.button(f"View PDF (Page {page})", key=f"pdf_button_{i}"):
-                display_pdf(pdf_path, page, doc.page_content)
+                show_pdf(pdf_path, page, doc.page_content)
     # Display PDF if requested
     if st.session_state.pdf_viewer:
         st.markdown("### PDF Viewer")
