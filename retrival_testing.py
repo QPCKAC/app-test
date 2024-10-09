@@ -130,38 +130,38 @@ def display_pdf(pdf_path, page=None, highlight_text=None):
     except Exception as e:
         st.error(f"Error displaying PDF: {e}")
 
-# Highlight PDF function
-def highlight_pdf(pdf_path, page, highlight_text):
-    try:
-        doc = fitz.open(pdf_path)
-        page_obj = doc.load_page(page - 1)
-        chunks = split_text(highlight_text, max_length=100)
-        for chunk in chunks:
-            text_instances = page_obj.search_for(chunk)
-            for inst in text_instances:
-                highlight = page_obj.add_highlight_annot(inst)
+# # Highlight PDF function
+# def highlight_pdf(pdf_path, page, highlight_text):
+#     try:
+#         doc = fitz.open(pdf_path)
+#         page_obj = doc.load_page(page - 1)
+#         chunks = split_text(highlight_text, max_length=100)
+#         for chunk in chunks:
+#             text_instances = page_obj.search_for(chunk)
+#             for inst in text_instances:
+#                 highlight = page_obj.add_highlight_annot(inst)
         
-        pix = page_obj.get_pixmap()
-        img_bytes = pix.tobytes()
-        img_base64 = base64.b64encode(img_bytes).decode()
+#         pix = page_obj.get_pixmap()
+#         img_bytes = pix.tobytes()
+#         img_base64 = base64.b64encode(img_bytes).decode()
         
-        highlighted_page = f"""
-        <div id="highlighted-page" style="height:600px; overflow-y:scroll;">
-            <img src="data:image/png;base64,{img_base64}" style="width:100%;"/>
-        </div>
-        """
-        st.components.v1.html(highlighted_page, height=620, scrolling=True)
-        doc.close()
-    except Exception as e:
-        st.error(f"Error highlighting PDF: {e}")
+#         highlighted_page = f"""
+#         <div id="highlighted-page" style="height:600px; overflow-y:scroll;">
+#             <img src="data:image/png;base64,{img_base64}" style="width:100%;"/>
+#         </div>
+#         """
+#         st.components.v1.html(highlighted_page, height=620, scrolling=True)
+#         doc.close()
+#     except Exception as e:
+#         st.error(f"Error highlighting PDF: {e}")
 
-# Show PDF function (updated)
-def show_pdf(pdf_path, page, highlight_text=None):
-    st.session_state.pdf_viewer = {
-        "pdf_path": pdf_path,
-        "page": page,
-        "highlight_text": highlight_text
-    }
+# # Show PDF function (updated)
+# def show_pdf(pdf_path, page, highlight_text=None):
+#     st.session_state.pdf_viewer = {
+#         "pdf_path": pdf_path,
+#         "page": page,
+#         "highlight_text": highlight_text
+#     }
 
 # Create a retriever
 @st.cache_resource
@@ -212,7 +212,7 @@ if st.session_state.docs_and_scores:
             st.write(f"Page: {doc.metadata.get('page', 'Unknown')}")
             pdf_path, page = generate_pdf_link(doc.metadata)
             if st.button(f"View PDF (Page {page})", key=f"pdf_button_{i}"):
-                show_pdf(pdf_path, page, doc.page_content)
+                display_pdf(pdf_path, page, doc.page_content)
     # Display PDF if requested
     if st.session_state.pdf_viewer:
         st.markdown("### PDF Viewer")
